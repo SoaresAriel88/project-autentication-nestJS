@@ -1,27 +1,53 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma.service';
-import { Prisma, Category } from '@prisma/client';
+import { Prisma, Category, Status } from '@prisma/client';
 
 @Injectable()
 export class CategoryService {
   @Inject()
   private readonly prisma: PrismaService;
 
-  //POST
-  async createCategory(data: Prisma.CategoryCreateInput): Promise<Category> {
+  // POST
+  async createCategory(data: {
+    name: string;
+    status: Status;
+    parentId?: string;
+  }): Promise<Category> {
+    const { parentId, ...rest } = data;
+
     return this.prisma.category.create({
-      data,
+      data: {
+        ...rest,
+        ...(parentId && { parent: { connect: { id: parentId } } }),
+      },
+      include: {
+        parent: true,
+        children: {
+          where: { deletedAt: null },
+        },
+      },
     });
   }
-  //GET POR ID
+
+  // GET POR ID
   async category(
     categoryWhereUniqueInput: Prisma.CategoryWhereUniqueInput,
   ): Promise<Category | null> {
-    return this.prisma.category.findUnique({
-      where: categoryWhereUniqueInput,
+    return this.prisma.category.findFirst({
+      where: {
+        ...categoryWhereUniqueInput,
+        deletedAt: null,
+      },
+      include: {
+        parent: true,
+        children: {
+          where: { deletedAt: null },
+        },
+      },
     });
   }
-  //LISTA TODOS OS DADOS
+
+  // LISTA TODOS OS DADOS
   async categories(params: {
     skip?: number;
     take?: number;
@@ -30,31 +56,58 @@ export class CategoryService {
     orderBy?: Prisma.CategoryOrderByWithRelationInput;
   }): Promise<Category[]> {
     const { skip, take, cursor, where, orderBy } = params;
+
     return this.prisma.category.findMany({
       skip,
       take,
       cursor,
       where: { ...where, deletedAt: null },
       orderBy,
+      include: {
+        parent: true,
+        children: {
+          where: { deletedAt: null },
+        },
+      },
     });
   }
-  //UPDATE
 
+  // UPDATE
   async updateCategory(params: {
     where: Prisma.CategoryWhereUniqueInput;
-    data: Prisma.CategoryUpdateInput;
+    data: { name: string; status: Status; parentId?: string };
   }): Promise<Category> {
     const { where, data } = params;
+    const { parentId, ...rest } = data;
+
     return this.prisma.category.update({
-      data,
       where,
+      data: {
+        ...rest,
+        ...(parentId && { parent: { connect: { id: parentId } } }),
+      },
+      include: {
+        parent: true,
+        children: {
+          where: { deletedAt: null },
+        },
+      },
     });
   }
-  //DELETE
 
+  // DELETE
   async deleteCategory(
     where: Prisma.CategoryWhereUniqueInput,
   ): Promise<Category> {
+    const category = await this.prisma.category.findUnique({ where });
+
+    if (category) {
+      await this.prisma.category.updateMany({
+        where: { parentId: category.id },
+        data: { deletedAt: new Date() },
+      });
+    }
+
     return this.prisma.category.update({
       where,
       data: { deletedAt: new Date() },

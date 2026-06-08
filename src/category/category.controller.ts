@@ -30,22 +30,25 @@ export class CategoryController {
       where: { status: 'ACTIVE' },
     });
   }
+
   @Post()
   async createCategory(
-    @Body() categoryData: { name: string; status: Status },
+    @Body() categoryData: { name: string; status: Status; parentId?: string },
   ): Promise<CategoryModel> {
     return this.categoryService.createCategory(categoryData);
   }
+
   @Put(':id')
   async updateCategory(
     @Param('id') id: string,
-    @Body() categoryData: { name: string; status: Status },
+    @Body() categoryData: { name: string; status: Status; parentId?: string },
   ): Promise<CategoryModel> {
     return this.categoryService.updateCategory({
       where: { id },
       data: categoryData,
     });
   }
+
   @Delete(':id')
   async deleteCategory(@Param('id') id: string): Promise<CategoryModel> {
     return this.categoryService.deleteCategory({ id });
