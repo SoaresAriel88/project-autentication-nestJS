@@ -5,6 +5,7 @@ import {
   Get,
   UseGuards,
   Request,
+  Param,
 } from '@nestjs/common';
 import { User as UserModel } from '@prisma/client';
 import { UserService } from './user.service';
@@ -19,6 +20,14 @@ export class UserController {
     @Body() userData: { email: string; name: string; password: string },
   ): Promise<UserModel> {
     return this.userService.createUser(userData);
+  }
+
+  @Post(':id/role')
+  async addRole(
+    @Param('id') userId: string,
+    @Body() body: { roleId: string },
+  ): Promise<UserModel> {
+    return this.userService.addRoleToUser(body.roleId, userId);
   }
 
   @UseGuards(JwtAuthGuard)

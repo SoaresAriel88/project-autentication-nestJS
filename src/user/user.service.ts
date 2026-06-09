@@ -17,6 +17,15 @@ export class UserService {
       },
     });
   }
+  async addRoleToUser(roleId: string, userId: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        roles: { connect: { id: roleId } },
+      },
+      include: { roles: true },
+    });
+  }
 
   async getMe(id: string): Promise<Partial<User> | null> {
     return this.prisma.user.findUnique({
