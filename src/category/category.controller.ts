@@ -11,13 +11,16 @@ import {
 import { Category as CategoryModel, Status } from '@prisma/client';
 import { CategoryService } from './category.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { PermissionGuard } from 'src/common/guards/permission.guard';
+import { Permissions } from 'src/common/decorators/permissions.decorator';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard)
 @Controller('category')
 export class CategoryController {
   constructor(private categoryService: CategoryService) {}
 
   @Get(':id')
+  @Permissions('read:category')
   async getCategoryById(
     @Param('id') id: string,
   ): Promise<CategoryModel | null> {
@@ -25,6 +28,7 @@ export class CategoryController {
   }
 
   @Get()
+  @Permissions('read:category')
   async getCategories(): Promise<CategoryModel[]> {
     return this.categoryService.categories({
       where: { status: 'ACTIVE' },
@@ -32,6 +36,7 @@ export class CategoryController {
   }
 
   @Post()
+  @Permissions('create:category')
   async createCategory(
     @Body() categoryData: { name: string; status: Status; parentId?: string },
   ): Promise<CategoryModel> {
@@ -39,6 +44,7 @@ export class CategoryController {
   }
 
   @Put(':id')
+  @Permissions('update:category')
   async updateCategory(
     @Param('id') id: string,
     @Body() categoryData: { name: string; status: Status; parentId?: string },
@@ -50,6 +56,7 @@ export class CategoryController {
   }
 
   @Delete(':id')
+  @Permissions('delete:category')
   async deleteCategory(@Param('id') id: string): Promise<CategoryModel> {
     return this.categoryService.deleteCategory({ id });
   }
