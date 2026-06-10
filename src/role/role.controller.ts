@@ -31,7 +31,7 @@ export class RoleController {
   async createRole(@Body() roleData: { name: string }): Promise<RoleModel> {
     return this.roleService.createRole(roleData);
   }
-  //ADICIONAR PERMISSION AO USER
+  //ADICIONAR PERMISSION AO ROLE (CARGO)
   @Post(':id/permission')
   async addPermission(
     @Param('id') roleId: string,
