@@ -15,6 +15,13 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 export class UserController {
   constructor(private userService: UserService) {}
 
+  @Post('verify-otp')
+  async verificationOtpCode(
+    @Body() userData: { email: string; otpCode: string },
+  ): Promise<UserModel> {
+    return this.userService.verifyOtp(userData.email, userData.otpCode);
+  }
+
   @Post('signup')
   async signupUser(
     @Body() userData: { email: string; name: string; password: string },

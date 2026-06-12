@@ -20,6 +20,10 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  emailVerified   Boolean   @default(false)
+  otpCode         String?
+  otpExpiresAt    DateTime?
+
   roles     Role[]    @relation("UserRoles")
 }
 
