@@ -3,6 +3,7 @@ import { PrismaService } from 'src/database/prisma.service';
 import { Prisma, User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { MailService } from 'src/mail/mail.service';
+import { MailQueueService } from 'src/mail-queue/mail-queue.service';
 
 @Injectable()
 export class UserService {
@@ -10,6 +11,8 @@ export class UserService {
   private readonly prisma: PrismaService;
   @Inject()
   private readonly mailService: MailService;
+  @Inject()
+  private readonly mailQueueService: MailQueueService;
 
   async createUser(data: Prisma.UserCreateInput): Promise<User> {
     const hashedPassword = await bcrypt.hash(data.password, 10);
@@ -25,7 +28,7 @@ export class UserService {
       },
     });
 
-    await this.mailService.sendOtpEmail(user.email, otpCode);
+    await this.mailQueueService.sendOtpEmail(user.email, otpCode);
 
     return user;
   }
