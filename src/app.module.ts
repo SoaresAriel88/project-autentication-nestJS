@@ -9,6 +9,9 @@ import { RoleModule } from './role/role.module';
 import { PermissionModule } from './permission/permission.module';
 import { MailModule } from './mail/mail.module';
 import { MailQueueModule } from './mail-queue/mail-queue.module';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -19,6 +22,14 @@ import { MailQueueModule } from './mail-queue/mail-queue.module';
         port: 6379,
       },
     }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60,
+          limit: 5,
+        },
+      ],
+    }),
     AuthModule,
     UserModule,
     DatabaseModule,
@@ -27,6 +38,12 @@ import { MailQueueModule } from './mail-queue/mail-queue.module';
     PermissionModule,
     MailModule,
     MailQueueModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

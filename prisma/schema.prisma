@@ -24,6 +24,9 @@ model User {
   otpCode         String?
   otpExpiresAt    DateTime?
 
+  resetPasswordOtp String?
+  resetPasswordOtpExpiresAt DateTime?
+
   roles     Role[]    @relation("UserRoles")
 }
 
