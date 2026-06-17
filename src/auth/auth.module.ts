@@ -4,9 +4,13 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { DatabaseModule } from 'src/database/database.module';
 import { JwtStrategy } from './jwt.strategy';
+import { MailModule } from 'src/mail/mail.module';
+import { MailQueueModule } from 'src/mail-queue/mail-queue.module';
 
 @Module({
   imports: [
+    MailModule,
+    MailQueueModule,
     DatabaseModule,
     JwtModule.registerAsync({
       useFactory: () => ({

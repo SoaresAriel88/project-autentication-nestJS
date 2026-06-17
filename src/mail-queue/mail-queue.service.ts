@@ -6,7 +6,19 @@ import { Queue } from 'bullmq';
 export class MailQueueService {
   constructor(@InjectQueue('mail-queue') private readonly mailQueue: Queue) {}
 
-  async sendOtpEmail(email: string, otpCode: string): Promise<void> {
+  async sendOtpEmailVerifyMail(email: string, otpCode: string): Promise<void> {
     await this.mailQueue.add('send-otp', { email, otpCode });
+  }
+  async sendOtpEmailResetPassword(
+    email: string,
+    resetPasswordOtp: string,
+  ): Promise<void> {
+    await this.mailQueue.add('send-otp-reset-password', {
+      email,
+      resetPasswordOtp,
+    });
+  }
+  async sendOtpConfirmatioResetPassword(email: string): Promise<void> {
+    await this.mailQueue.add('send-confirmation-reset-password', { email });
   }
 }

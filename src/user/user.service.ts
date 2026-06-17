@@ -28,7 +28,7 @@ export class UserService {
       },
     });
 
-    await this.mailQueueService.sendOtpEmail(user.email, otpCode);
+    await this.mailQueueService.sendOtpEmailVerifyMail(user.email, otpCode);
 
     return user;
   }
