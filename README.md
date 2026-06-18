@@ -1,98 +1,251 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Authentication API with OTP, JWT, Email Queue and Rate Limiting
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=flat&logo=nestjs&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=flat&logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat&logo=redis&logoColor=white)
+![JWT](https://img.shields.io/badge/JWT-black?style=flat&logo=JSON%20web%20tokens)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Overview
 
-## Description
+This project is a backend API built with **NestJS** that implements a complete authentication system, including user registration with email verification, login with JWT, and a full password reset flow protected by OTP validation and rate limiting.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+The goal of the project is to practice real-world backend concepts: authentication, authorization, asynchronous processing, email delivery, and protection against abuse.
 
-## Project setup
+---
 
-```bash
-$ npm install
+## Features
+
+### Authentication
+
+- User registration with hashed passwords (bcrypt)
+- Email verification via OTP (6-digit code)
+- User login with email and password
+- JWT token generation
+- Protected routes using Guards
+
+### Password Reset Flow
+
+- Password reset request via email
+- OTP generation and expiration control
+- OTP verification
+- Temporary JWT token for authorizing the password update
+- Password update with hashing
+- Confirmation email after a successful reset
+
+### Email Processing
+
+- Email verification OTP
+- Password reset OTP
+- Password reset confirmation email
+- Asynchronous email delivery using BullMQ + Redis (emails are queued, not sent synchronously inside the request)
+
+### Security
+
+- JWT authentication with Passport
+- Custom `ResetPasswordGuard` for the password reset step
+- Password hashing with bcrypt
+- OTP expiration control (10 minutes)
+- OTP invalidated after use
+- Rate limiting with `@nestjs/throttler` on login and password reset routes
+- Soft delete pattern (`deletedAt`) instead of permanent deletion
+
+---
+
+## Architecture
+
+```text
+Client
+ │
+ ▼
+Controller
+ │
+ ▼
+Guard
+ │
+ ▼
+Service
+ │
+ ▼
+Prisma ORM
+ │
+ ▼
+PostgreSQL
 ```
 
-## Compile and run the project
+### Email flow (asynchronous)
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+```text
+Service
+ │
+ ▼
+BullMQ Queue (Producer)
+ │
+ ▼
+Redis
+ │
+ ▼
+Queue Processor (Worker)
+ │
+ ▼
+Mail Service (Nodemailer)
+ │
+ ▼
+SMTP Provider (Mailtrap)
+ │
+ ▼
+User Email
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ npm run test
+## Project Structure
 
-# e2e tests
-$ npm run test:e2e
+```text
+src/
+├── auth/              # Login, JWT strategy, guards, password reset flow
+├── user/              # User registration, OTP verification, /me route
+├── category/          # CRUD example with soft delete and self-relation
+├── mail/              # Nodemailer service (SMTP integration)
+├── mail-queue/        # BullMQ producer + processor for async emails
+├── database/          # PrismaService (PostgreSQL connection)
+└── main.ts            # Application entry point
 
-# test coverage
-$ npm run test:cov
+prisma/
+├── schema.prisma       # Data models, enums and relations
+└── migrations/         # Database migration history
 ```
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Technologies Used
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+| Technology | Purpose |
+|---|---|
+| **NestJS** | Main backend framework — Controllers, Services, Guards, Modules, Dependency Injection |
+| **Prisma ORM** | Database communication (create, read, update, delete) using TypeScript objects instead of raw SQL |
+| **PostgreSQL** | Relational database |
+| **JWT** | Stateless authentication and identity validation |
+| **Passport / Passport-JWT** | Authentication middleware — extracts and validates the JWT from the `Authorization` header |
+| **bcrypt** | Password hashing — never stores plain text passwords |
+| **Nodemailer** | Sends OTP and confirmation emails via SMTP |
+| **BullMQ** | Queue management — moves email sending to background jobs |
+| **Redis** | In-memory store used by BullMQ to hold queues and pending jobs |
+| **@nestjs/throttler** | Rate limiting — prevents brute force and spam |
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+---
+
+## Guards
+
+| Guard | Responsibility |
+|---|---|
+| `JwtAuthGuard` | Protects authenticated routes (e.g. `/user/me`) |
+| `ResetPasswordGuard` | Validates the temporary JWT issued after OTP verification, authorizing the password update step |
+
+---
+
+## Password Reset Flow (step by step)
+
+### Step 1 — Request reset
+
+```
+POST /auth/forgot-password
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+- Generates a 6-digit OTP
+- Stores the OTP and its expiration date on the user
+- Sends the OTP by email (via queue)
 
-## Resources
+### Step 2 — Verify OTP
 
-Check out a few resources that may come in handy when working with NestJS:
+```
+POST /auth/verify-reset-password-otp
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- Validates the OTP against the stored value
+- Validates that it has not expired
+- Issues a short-lived JWT authorizing the next step
 
-## Support
+### Step 3 — Reset password
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```
+POST /auth/reset-password
+```
 
-## Stay in touch
+- Validates the temporary JWT using `ResetPasswordGuard`
+- Hashes the new password
+- Updates the user record
+- Clears the OTP fields
+- Sends a confirmation email (via queue)
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## Other Main Routes
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Method | Route | Description | Auth |
+|---|---|---|---|
+| POST | `/user/signup` | Register user, send verification OTP | No |
+| POST | `/user/verify-otp` | Verify email with OTP | No |
+| POST | `/auth/login` | Login, returns JWT | No |
+| GET | `/user/me` | Returns logged-in user data | Yes (JWT) |
+| GET / POST / PUT / DELETE | `/category` | Category CRUD with soft delete and self-relation (parent/children) | Yes (JWT) |
+
+---
+
+## How to Run
+
+### Requirements
+
+- Node.js 18+
+- Docker (for PostgreSQL and Redis)
+
+### Install dependencies
+
+```bash
+npm install
+```
+
+### Environment variables
+
+Create a `.env` file at the project root:
+
+```env
+DATABASE_URL="postgresql://usuario:senha@localhost:5432/meubanco"
+JWT_SECRET="your_secret_key"
+MAIL_HOST="sandbox.smtp.mailtrap.io"
+MAIL_PORT=2525
+MAIL_USER="your_mailtrap_user"
+MAIL_PASS="your_mailtrap_pass"
+MAIL_FROM="no-reply@yourapp.com"
+```
+
+### Start PostgreSQL and Redis
+
+```bash
+docker run --name postgres -e POSTGRES_PASSWORD=senha -e POSTGRES_USER=usuario -e POSTGRES_DB=meubanco -p 5432:5432 -d postgres
+docker run --name redis -p 6379:6379 -d redis
+```
+
+### Run migrations
+
+```bash
+npx prisma migrate dev
+```
+
+### Start the application
+
+```bash
+npm run start:dev
+```
+
+---
+
+## Author
+
+**Ariel Soares**
+
+- GitHub: [@SoaresAriel088](https://github.com/SoaresAriel088)
+- LinkedIn: [Ariel Soares](https://www.linkedin.com/in/ariel-soares)
+
+Built as a backend study project during a Fullstack Development internship, applying real-world authentication, security, and asynchronous processing patterns with NestJS.
