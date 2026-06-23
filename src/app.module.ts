@@ -12,6 +12,7 @@ import { MailQueueModule } from './mail-queue/mail-queue.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { TenantModule } from './tenant/tenant.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     PermissionModule,
     MailModule,
     MailQueueModule,
+    TenantModule,
   ],
   providers: [
     {

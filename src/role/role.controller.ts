@@ -7,15 +7,18 @@ import {
   Put,
   Delete,
   UseGuards,
+  Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { Role as RoleModel } from '@prisma/client';
 import { RoleService } from './role.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { JwtUser } from 'src/auth/types/jwt-user.type';
 
 @UseGuards(JwtAuthGuard)
 @Controller('role')
 export class RoleController {
-  constructor(private roleService: RoleService) {}
+  constructor(private readonly roleService: RoleService) {}
 
   @Get(':id')
   async getRoleById(@Param('id') id: string): Promise<RoleModel | null> {
@@ -23,21 +26,40 @@ export class RoleController {
   }
 
   @Get()
-  async getRoles(): Promise<RoleModel[]> {
-    return this.roleService.roles({});
+  async getRoles(@Req() request: { user: JwtUser }): Promise<RoleModel[]> {
+    return this.roleService.roles({
+      where: {
+        tenantId: request.user.tenantId,
+      },
+    });
   }
-  //CRIAR PERMISSION
+
   @Post()
-  async createRole(@Body() roleData: { name: string }): Promise<RoleModel> {
-    return this.roleService.createRole(roleData);
+  async createRole(
+    @Req() request: { user: JwtUser },
+    @Body() roleData: { name: string },
+  ): Promise<RoleModel> {
+    if (!request.user.tenantId) {
+      throw new BadRequestException('Tenant não encontrado no token');
+    }
+
+    return this.roleService.createRole({
+      name: roleData.name,
+      tenantId: request.user.tenantId,
+    });
   }
-  //ADICIONAR PERMISSION AO ROLE (CARGO)
-  @Post(':id/permission')
+
+  @Post(':roleId/permission')
   async addPermission(
-    @Param('id') roleId: string,
+    @Req() request: { user: JwtUser },
+    @Param('roleId') roleId: string,
     @Body() body: { permissionId: string },
   ): Promise<RoleModel> {
-    return this.roleService.addPermissionToRole(roleId, body.permissionId);
+    return this.roleService.addPermissionToRole(
+      roleId,
+      body.permissionId,
+      request.user.tenantId,
+    );
   }
 
   @Put(':id')

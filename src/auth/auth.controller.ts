@@ -8,22 +8,33 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
-  async login(@Body() body: { email: string; password: string }) {
-    return this.authService.login(body.email, body.password);
+  async login(
+    @Body() body: { email: string; password: string; tenantSlug: string },
+  ) {
+    return this.authService.login(body.email, body.password, body.tenantSlug);
   }
   @Post('forgot-password')
   async generateOtpCodeForForgotPassword(
-    @Body() body: { email: string },
+    @Body() body: { email: string; tenantSlug: string },
   ): Promise<void> {
-    return this.authService.generateOtpResetPassword(body.email);
+    return this.authService.generateOtpResetPassword(
+      body.email,
+      body.tenantSlug,
+    );
   }
   @Post('verify-reset-password-otp')
   async verifyOtpCodeResetPassword(
-    @Body() body: { email: string; resetPasswordOtp: string },
+    @Body()
+    body: {
+      email: string;
+      resetPasswordOtp: string;
+      tenantSlug: string;
+    },
   ) {
     return this.authService.verifyOtpResetPassword(
       body.email,
       body.resetPasswordOtp,
+      body.tenantSlug,
     );
   }
   @Post('reset-password')

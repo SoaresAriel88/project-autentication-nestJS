@@ -12,13 +12,20 @@ export class CategoryService {
     name: string;
     status: Status;
     parentId?: string;
+    tenantId: string;
   }): Promise<Category> {
-    const { parentId, ...rest } = data;
+    const { parentId, tenantId, name, status } = data;
 
     return this.prisma.category.create({
       data: {
-        ...rest,
+        name,
+        status,
         ...(parentId && { parent: { connect: { id: parentId } } }),
+        tenant: {
+          connect: {
+            id: tenantId,
+          },
+        },
       },
       include: {
         parent: true,

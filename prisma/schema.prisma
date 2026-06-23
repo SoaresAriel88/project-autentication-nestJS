@@ -11,34 +11,57 @@ datasource db {
   provider = "postgresql"
 }
 
+model Tenant {
+  id        String    @id @default(uuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  users      User[]
+  roles      Role[]
+  categories Category[]
+}
+
 model User {
   id        String    @id @default(uuid())
-  email     String    @unique
+  email     String
   name      String
   password  String
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  emailVerified   Boolean   @default(false)
-  otpCode         String?
-  otpExpiresAt    DateTime?
+  emailVerified Boolean   @default(false)
+  otpCode       String?
+  otpExpiresAt  DateTime?
 
-  resetPasswordOtp String?
+  resetPasswordOtp          String?
   resetPasswordOtpExpiresAt DateTime?
 
-  roles     Role[]    @relation("UserRoles")
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  roles Role[] @relation("UserRoles")
+
+  @@unique([email, tenantId])
 }
 
 model Role {
-  id          String       @id @default(uuid())
-  name        String       @unique
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  deletedAt   DateTime?
+  id        String    @id @default(uuid())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   users       User[]       @relation("UserRoles")
   permissions Permission[] @relation("RolePermissions")
+
+  @@unique([name, tenantId])
 }
 
 model Permission {
@@ -48,7 +71,7 @@ model Permission {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  roles     Role[]    @relation("RolePermissions")
+  roles Role[] @relation("RolePermissions")
 }
 
 enum Status {
@@ -64,7 +87,10 @@ model Category {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  parentId  String?   
-  parent    Category?  @relation("CategoryParent", fields: [parentId], references: [id])
-  children  Category[] @relation("CategoryParent")
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  parentId String?
+  parent   Category?  @relation("CategoryParent", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryParent")
 }
