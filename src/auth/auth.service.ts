@@ -19,8 +19,15 @@ export class AuthService {
   @Inject()
   private readonly mailQueueService: MailQueueService;
 
-  async login(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+  async login(email: string, password: string, tenantSlug: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email,
+        tenant: {
+          slug: tenantSlug,
+        },
+      },
+    });
 
     if (!user) throw new UnauthorizedException('Credenciais inválidas');
 
@@ -29,12 +36,26 @@ export class AuthService {
     if (!passwordMatch)
       throw new UnauthorizedException('Credenciais inválidas');
 
-    const token = this.jwt.sign({ sub: user.id, email: user.email });
+    const token = this.jwt.sign({
+      sub: user.id,
+      email: user.email,
+      tenantId: user.tenantId,
+    });
 
     return { token };
   }
-  async generateOtpResetPassword(email: string): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+  async generateOtpResetPassword(
+    email: string,
+    tenantSlug: string,
+  ): Promise<void> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email,
+        tenant: {
+          slug: tenantSlug,
+        },
+      },
+    });
     if (!user) throw new UnauthorizedException('Usuário não encontrado');
     const resetPasswordOtp = Math.floor(
       100000 + Math.random() * 900000,
@@ -42,9 +63,7 @@ export class AuthService {
     const resetPasswordOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await this.prisma.user.update({
-      where: {
-        email,
-      },
+      where: { id: user.id },
       data: {
         resetPasswordOtp: resetPasswordOtp,
         resetPasswordOtpExpiresAt: resetPasswordOtpExpiresAt,
@@ -55,8 +74,19 @@ export class AuthService {
       resetPasswordOtp,
     );
   }
-  async verifyOtpResetPassword(email: string, resetPasswordOtp: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+  async verifyOtpResetPassword(
+    email: string,
+    resetPasswordOtp: string,
+    tenantSlug: string,
+  ) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email,
+        tenant: {
+          slug: tenantSlug,
+        },
+      },
+    });
     if (!user) throw new UnauthorizedException('Usuário não encontrado');
 
     if (user.resetPasswordOtp !== resetPasswordOtp)
@@ -69,14 +99,19 @@ export class AuthService {
       throw new UnauthorizedException('Código OTP expirado');
 
     await this.prisma.user.update({
-      where: { email },
+      where: { id: user.id },
       data: {
         resetPasswordOtp: null,
         resetPasswordOtpExpiresAt: null,
       },
     });
     const token = this.jwt.sign(
-      { sub: user.id, purpose: 'reset-password' },
+      {
+        sub: user.id,
+        email: user.email,
+        tenantId: user.tenantId,
+        purpose: 'reset-password',
+      },
       { expiresIn: '10m' },
     );
 

@@ -7,12 +7,14 @@ import {
   Put,
   Delete,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { Category as CategoryModel, Status } from '@prisma/client';
 import { CategoryService } from './category.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { PermissionGuard } from 'src/common/guards/permission.guard';
 import { Permissions } from 'src/common/decorators/permissions.decorator';
+import { JwtUser } from 'src/auth/types/jwt-user.type';
 
 @UseGuards(JwtAuthGuard, PermissionGuard)
 @Controller('category')
@@ -38,9 +40,18 @@ export class CategoryController {
   @Post()
   @Permissions('create:category')
   async createCategory(
-    @Body() categoryData: { name: string; status: Status; parentId?: string },
+    @Req() request: { user: JwtUser },
+    @Body()
+    categoryData: {
+      name: string;
+      status: Status;
+      parentId?: string;
+    },
   ): Promise<CategoryModel> {
-    return this.categoryService.createCategory(categoryData);
+    return this.categoryService.createCategory({
+      ...categoryData,
+      tenantId: request.user.tenantId,
+    });
   }
 
   @Put(':id')

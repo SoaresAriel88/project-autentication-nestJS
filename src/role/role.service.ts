@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/database/prisma.service';
 import { Prisma, Role } from '@prisma/client';
 
@@ -7,23 +7,64 @@ export class RoleService {
   @Inject()
   private readonly prisma: PrismaService;
 
-  // POST
-  async createRole(data: Prisma.RoleCreateInput): Promise<Role> {
-    return this.prisma.role.create({ data });
+  // POST - CRIAR ROLE
+  async createRole(data: { name: string; tenantId: string }): Promise<Role> {
+    const { name, tenantId } = data;
+
+    return this.prisma.role.create({
+      data: {
+        name,
+        tenant: {
+          connect: {
+            id: tenantId,
+          },
+        },
+      },
+    });
   }
 
-  // POST PARA VINCULAR A PERMISSÃO
-
+  // POST - VINCULAR PERMISSION NA ROLE
   async addPermissionToRole(
     roleId: string,
     permissionId: string,
+    tenantId: string,
   ): Promise<Role> {
-    return this.prisma.role.update({
-      where: { id: roleId },
-      data: {
-        permissions: { connect: { id: permissionId } },
+    const role = await this.prisma.role.findFirst({
+      where: {
+        id: roleId,
+        tenantId,
+        deletedAt: null,
       },
-      include: { permissions: true },
+    });
+
+    if (!role) {
+      throw new NotFoundException('Role não encontrada nesse tenant');
+    }
+
+    const permission = await this.prisma.permission.findUnique({
+      where: {
+        id: permissionId,
+      },
+    });
+
+    if (!permission) {
+      throw new NotFoundException('Permission não encontrada');
+    }
+
+    return this.prisma.role.update({
+      where: {
+        id: role.id,
+      },
+      data: {
+        permissions: {
+          connect: {
+            id: permission.id,
+          },
+        },
+      },
+      include: {
+        permissions: true,
+      },
     });
   }
 
@@ -53,7 +94,10 @@ export class RoleService {
       skip,
       take,
       cursor,
-      where: { ...where, deletedAt: null },
+      where: {
+        ...where,
+        deletedAt: null,
+      },
       orderBy,
     });
   }
@@ -64,14 +108,20 @@ export class RoleService {
     data: { name: string };
   }): Promise<Role> {
     const { where, data } = params;
-    return this.prisma.role.update({ where, data });
+
+    return this.prisma.role.update({
+      where,
+      data,
+    });
   }
 
   // DELETE
   async deleteRole(where: Prisma.RoleWhereUniqueInput): Promise<Role> {
     return this.prisma.role.update({
       where,
-      data: { deletedAt: new Date() },
+      data: {
+        deletedAt: new Date(),
+      },
     });
   }
 }
