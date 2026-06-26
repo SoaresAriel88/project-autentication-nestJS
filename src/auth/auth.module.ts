@@ -6,6 +6,7 @@ import { DatabaseModule } from 'src/database/database.module';
 import { JwtStrategy } from './jwt.strategy';
 import { MailModule } from 'src/mail/mail.module';
 import { MailQueueModule } from 'src/mail-queue/mail-queue.module';
+import { RedisModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { MailQueueModule } from 'src/mail-queue/mail-queue.module';
         signOptions: { expiresIn: '7d' },
       }),
     }),
+    RedisModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
