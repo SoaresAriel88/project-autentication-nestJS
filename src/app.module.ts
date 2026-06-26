@@ -13,6 +13,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { TenantModule } from './tenant/tenant.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { TenantModule } from './tenant/tenant.module';
     MailModule,
     MailQueueModule,
     TenantModule,
+    RedisModule,
   ],
   providers: [
     {

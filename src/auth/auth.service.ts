@@ -4,6 +4,7 @@ import { PrismaService } from 'src/database/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { MailService } from 'src/mail/mail.service';
 import { MailQueueService } from 'src/mail-queue/mail-queue.service';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class AuthService {
@@ -18,6 +19,9 @@ export class AuthService {
 
   @Inject()
   private readonly mailQueueService: MailQueueService;
+
+  @Inject()
+  private readonly redisService: RedisService;
 
   async login(email: string, password: string, tenantSlug: string) {
     const user = await this.prisma.user.findFirst({
@@ -60,15 +64,10 @@ export class AuthService {
     const resetPasswordOtp = Math.floor(
       100000 + Math.random() * 900000,
     ).toString();
-    const resetPasswordOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        resetPasswordOtp: resetPasswordOtp,
-        resetPasswordOtpExpiresAt: resetPasswordOtpExpiresAt,
-      },
-    });
+    const otpKey = `tenant:${tenantSlug}:auth:otp:reset-password:${user.email}`;
+
+    await this.redisService.setWithExpiration(otpKey, resetPasswordOtp, 600);
     await this.mailQueueService.sendOtpEmailResetPassword(
       user.email,
       resetPasswordOtp,
@@ -89,22 +88,19 @@ export class AuthService {
     });
     if (!user) throw new UnauthorizedException('Usuário não encontrado');
 
-    if (user.resetPasswordOtp !== resetPasswordOtp)
-      throw new UnauthorizedException('Código OTP inválido');
+    const otpKey = `tenant:${tenantSlug}:auth:otp:reset-password:${user.email}`;
+    const savedOtp = await this.redisService.getValue(otpKey);
 
-    if (
-      !user.resetPasswordOtpExpiresAt ||
-      new Date() > user.resetPasswordOtpExpiresAt
-    )
-      throw new UnauthorizedException('Código OTP expirado');
+    if (!savedOtp) {
+      throw new UnauthorizedException('Código expirado');
+    }
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        resetPasswordOtp: null,
-        resetPasswordOtpExpiresAt: null,
-      },
-    });
+    if (savedOtp !== resetPasswordOtp) {
+      throw new UnauthorizedException('Código inválido');
+    }
+
+    await this.redisService.deleteKey(otpKey);
+
     const token = this.jwt.sign(
       {
         sub: user.id,

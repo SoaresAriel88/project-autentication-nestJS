@@ -10,6 +10,7 @@ import { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { MailService } from 'src/mail/mail.service';
 import { MailQueueService } from 'src/mail-queue/mail-queue.service';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class UserService {
@@ -19,6 +20,8 @@ export class UserService {
   private readonly mailService: MailService;
   @Inject()
   private readonly mailQueueService: MailQueueService;
+  @Inject()
+  private readonly redisService: RedisService;
 
   async createUser(data: {
     email: string;
@@ -28,16 +31,14 @@ export class UserService {
   }): Promise<User> {
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     const { tenantSlug, email, name } = data;
+    const otpKey = `tenant:${tenantSlug}:auth:otp:verify-email:${email}`;
 
     const user = await this.prisma.user.create({
       data: {
         email,
         name,
         password: hashedPassword,
-        otpCode,
-        otpExpiresAt,
         tenant: {
           connect: {
             slug: tenantSlug,
@@ -45,7 +46,7 @@ export class UserService {
         },
       },
     });
-
+    await this.redisService.setWithExpiration(otpKey, otpCode, 600);
     await this.mailQueueService.sendOtpEmailVerifyMail(user.email, otpCode);
 
     return user;
@@ -116,20 +117,24 @@ export class UserService {
     });
     if (!user) throw new UnauthorizedException('Usuário não encontrado');
 
-    if (user.otpCode !== otpCode)
-      throw new UnauthorizedException('Código OTP inválido');
+    const otpKey = `tenant:${tenantSlug}:auth:otp:verify-email:${email}`;
+    const savedOtp = await this.redisService.getValue(otpKey);
+    if (!savedOtp) {
+      throw new UnauthorizedException('Código expirado');
+    }
 
-    if (!user.otpExpiresAt || new Date() > user.otpExpiresAt)
-      throw new UnauthorizedException('Código OTP expirado');
+    if (savedOtp !== otpCode) {
+      throw new UnauthorizedException('Código inválido');
+    }
 
-    return this.prisma.user.update({
+    const userEmailVerified = await this.prisma.user.update({
       where: { id: user.id },
       data: {
         emailVerified: true,
-        otpCode: null,
-        otpExpiresAt: null,
       },
     });
+    await this.redisService.deleteKey(otpKey);
+    return userEmailVerified;
   }
   async resendOtp(email: string, tenantSlug: string): Promise<void> {
     if (!tenantSlug) {
@@ -152,16 +157,9 @@ export class UserService {
     }
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const otpKey = `tenant:${tenantSlug}:auth:otp:verify-email:${email}`;
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        otpCode,
-        otpExpiresAt,
-      },
-    });
-
+    await this.redisService.setWithExpiration(otpKey, otpCode, 600);
     await this.mailQueueService.sendOtpEmailVerifyMail(user.email, otpCode);
   }
 }
