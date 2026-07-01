@@ -4,8 +4,7 @@ import { Prisma, Role } from '@prisma/client';
 
 @Injectable()
 export class RoleService {
-  @Inject()
-  private readonly prisma: PrismaService;
+constructor(private readonly prisma: PrismaService) {}
 
   // POST - CRIAR ROLE
   async createRole(data: { name: string; tenantId: string }): Promise<Role> {

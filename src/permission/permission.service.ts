@@ -4,8 +4,7 @@ import { Prisma, Permission } from '@prisma/client';
 
 @Injectable()
 export class PermissionService {
-  @Inject()
-  private readonly prisma: PrismaService;
+constructor(private readonly prisma: PrismaService) {}
 
   // POST
   async createPermission(

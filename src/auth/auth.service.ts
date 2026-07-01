@@ -8,20 +8,12 @@ import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class AuthService {
-  @Inject()
-  private readonly prisma: PrismaService;
-
-  @Inject()
-  private readonly jwt: JwtService;
-
-  @Inject()
-  private readonly mailService: MailService;
-
-  @Inject()
-  private readonly mailQueueService: MailQueueService;
-
-  @Inject()
-  private readonly redisService: RedisService;
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
+    private readonly mailQueueService: MailQueueService,
+    private readonly redisService: RedisService,
+  ) {}
 
   async login(email: string, password: string, tenantSlug: string) {
     const user = await this.prisma.user.findFirst({

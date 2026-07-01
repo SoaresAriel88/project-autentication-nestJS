@@ -4,8 +4,7 @@ import { Prisma, Category, Status } from '@prisma/client';
 
 @Injectable()
 export class CategoryService {
-  @Inject()
-  private readonly prisma: PrismaService;
+  constructor(private readonly prisma: PrismaService) {}
 
   // POST
   async createCategory(data: {
