@@ -35,4 +35,10 @@ export class RedisService {
   async getTTL(key: string) {
     return this.client.ttl(key);
   }
+  async increment(key: string) {
+    return this.client.incr(key);
+  }
+  async expire(key: string, seconds: number) {
+    return this.client.expire(key, seconds);
+  }
 }

@@ -47,7 +47,11 @@ export class UserService {
       },
     });
     await this.redisService.setWithExpiration(otpKey, otpCode, 600);
-    await this.mailQueueService.sendOtpEmailVerifyMail(user.email, otpCode);
+    await this.mailQueueService.sendOtpEmailVerifyMail(
+      user.email,
+      otpCode,
+      name,
+    );
 
     return user;
   }
@@ -117,6 +121,15 @@ export class UserService {
     });
     if (!user) throw new UnauthorizedException('Usuário não encontrado');
 
+    const blockedKey = `tenant:${tenantSlug}:auth:blocked:otp:verify-email:${email}`;
+    const attemptsKey = `tenant:${tenantSlug}:auth:attempts:otp:verify-email:${email}`;
+    const existsBlockedKey = await this.redisService.exists(blockedKey);
+    if (existsBlockedKey) {
+      throw new UnauthorizedException(
+        'Muitas tentativas. Tente novamente mais tarde',
+      );
+    }
+
     const otpKey = `tenant:${tenantSlug}:auth:otp:verify-email:${email}`;
     const savedOtp = await this.redisService.getValue(otpKey);
     if (!savedOtp) {
@@ -124,6 +137,17 @@ export class UserService {
     }
 
     if (savedOtp !== otpCode) {
+      const attempts = await this.redisService.increment(attemptsKey);
+      if (attempts == 1) {
+        await this.redisService.expire(attemptsKey, 600);
+      }
+      if (attempts >= 5) {
+        await this.redisService.setWithExpiration(blockedKey, 'blocked', 900);
+        await this.redisService.deleteKey(attemptsKey);
+        throw new UnauthorizedException(
+          'Muitas tentativas. Tente novamente mais tarde',
+        );
+      }
       throw new UnauthorizedException('Código inválido');
     }
 
@@ -151,15 +175,25 @@ export class UserService {
     });
 
     if (!user) throw new UnauthorizedException('Usuário não encontrado');
-
     if (user.emailVerified) {
       throw new BadRequestException('E-mail já verificado');
     }
 
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpKey = `tenant:${tenantSlug}:auth:otp:verify-email:${email}`;
-
-    await this.redisService.setWithExpiration(otpKey, otpCode, 600);
-    await this.mailQueueService.sendOtpEmailVerifyMail(user.email, otpCode);
+    const otpKeyCooldown = `tenant:${tenantSlug}:auth:cooldown:verify-email:${email}`;
+    const existsOtpCooldown = await this.redisService.exists(otpKeyCooldown);
+    if (existsOtpCooldown) {
+      throw new UnauthorizedException('Aguarde para reenviar o código');
+    } else {
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const name = user.name;
+      const otpKey = `tenant:${tenantSlug}:auth:otp:verify-email:${email}`;
+      await this.redisService.setWithExpiration(otpKey, otpCode, 600);
+      await this.redisService.setWithExpiration(otpKeyCooldown, 'blocked', 60);
+      await this.mailQueueService.sendOtpEmailVerifyMail(
+        user.email,
+        otpCode,
+        name,
+      );
+    }
   }
 }

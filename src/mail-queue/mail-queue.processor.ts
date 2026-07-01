@@ -10,19 +10,29 @@ export class MailQueueProcessor extends WorkerHost {
 
   async process(job: Job): Promise<void> {
     if (job.name == 'send-otp') {
-      const { email, otpCode } = job.data as { email: string; otpCode: string };
-      await this.mailService.sendOtpEmailVerifyMail(email, otpCode);
-    } else if (job.name == 'send-otp-reset-password') {
-      const { email, resetPasswordOtp } = job.data as {
+      const { email, otpCode, name } = job.data as {
         email: string;
+        otpCode: string;
+        name: string;
+      };
+      await this.mailService.sendOtpEmailVerifyMail(email, otpCode, name);
+    } else if (job.name == 'send-otp-reset-password') {
+      const { email, resetPasswordOtp, name } = job.data as {
+        email: string;
+        name: string;
         resetPasswordOtp: string;
       };
-      await this.mailService.sendOtpEmailResetPassword(email, resetPasswordOtp);
+      await this.mailService.sendOtpEmailResetPassword(
+        email,
+        resetPasswordOtp,
+        name,
+      );
     } else if (job.name == 'send-confirmation-reset-password') {
-      const { email } = job.data as {
+      const { email, name } = job.data as {
         email: string;
+        name: string;
       };
-      await this.mailService.sendOtpConfirmatioResetPassword(email);
+      await this.mailService.sendOtpConfirmatioResetPassword(email, name);
     }
   }
 }
