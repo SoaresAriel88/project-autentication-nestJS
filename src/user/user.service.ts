@@ -14,14 +14,12 @@ import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class UserService {
-  @Inject()
-  private readonly prisma: PrismaService;
-  @Inject()
-  private readonly mailService: MailService;
-  @Inject()
-  private readonly mailQueueService: MailQueueService;
-  @Inject()
-  private readonly redisService: RedisService;
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+    private readonly mailQueueService: MailQueueService,
+    private readonly redisService: RedisService,
+  ) {}
 
   async createUser(data: {
     email: string;
