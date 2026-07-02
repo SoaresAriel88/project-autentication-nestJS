@@ -1,8 +1,7 @@
-import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/database/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { MailService } from 'src/mail/mail.service';
 import { MailQueueService } from 'src/mail-queue/mail-queue.service';
 import { RedisService } from 'src/redis/redis.service';
 
